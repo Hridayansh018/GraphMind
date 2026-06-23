@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Chatbot</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark">SC</div>
+        <div>
+          <h1>Smart Chatbot</h1>
+          <p>Chat, math, resume review &amp; PDF Q&amp;A</p>
+        </div>
+      </div>
+      <div class="status" id="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting…</span>
+      </div>
+    </header>
+
+    <main class="chat-card">
+      <div class="messages" id="messages">
+        <div class="message bot">
+          <div class="bubble">
+            Hi! Ask me anything, do some math, drop a resume for review, or
+            upload a PDF to summarize and ask questions about it.
+          </div>
+        </div>
+      </div>
+      <div class="typing hidden" id="typing">
+        <span></span><span></span><span></span>
+      </div>
+    </main>
+
+    <form class="composer" id="composer">
+      <div class="chip hidden" id="fileChip">
+        <span id="fileName"></span>
+        <button type="button" id="removeFile" aria-label="Remove file">&times;</button>
+      </div>
+
+      <div class="jd-field hidden" id="jdField">
+        <input
+          type="text"
+          id="jobDescription"
+          placeholder="Job description (optional, improves resume review)"
+        />
+      </div>
+
+      <div class="composer-row">
+        <label class="icon-btn" for="fileInput" title="Attach a PDF">
+          📎
+          <input type="file" id="fileInput" accept="application/pdf" hidden />
+        </label>
+
+        <textarea
+          id="messageInput"
+          rows="1"
+          placeholder="Type a message…"
+          required
+        ></textarea>
+
+        <button type="submit" class="send-btn" id="sendBtn" title="Send">➤</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
