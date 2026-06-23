@@ -27,12 +27,12 @@ async def build_bot():
     resume_agent = make_resume_agent(resume_tools)
 
     
-    def math_node(state:MessagesState)->str:
-        return math_agent.invoke(state)
-    def web_node(state:MessagesState):
-        return web_agent.invoke(state)
-    def resume_node(state: BotState):
-        return resume_agent.invoke(state)
+    async def math_node(state:MessagesState)->str:
+        return await math_agent.ainvoke(state)
+    async def web_node(state:MessagesState):
+        return await web_agent.ainvoke(state)
+    async def resume_node(state: BotState):
+        return await resume_agent.ainvoke(state)
     
     def supervisor(state:MessagesState)->str:
         text = state["messages"][-1].content.lower()

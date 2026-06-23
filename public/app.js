@@ -42,26 +42,38 @@ function addMessage(text, role, modeLabel) {
   }
 
   const body = document.createElement("div");
-  if (typeof text === "string") {
-    body.textContent = text;
-  } else {
-    const pre = document.createElement("pre");
-    pre.style.margin = "0";
-    pre.style.whiteSpace = "pre-wrap";
-    pre.textContent = JSON.stringify(text, null, 2);
-    body.appendChild(pre);
-  }
+  body.textContent = text;
   bubble.appendChild(body);
 
   row.appendChild(bubble);
   messagesEl.appendChild(row);
   scrollToBottom();
+  return { row, bubble, body };
+}
+
+function createLiveBubble() {
+  const row = document.createElement("div");
+  row.className = "message bot";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const tag = document.createElement("div");
+  tag.className = "mode-tag hidden";
+  bubble.appendChild(tag);
+
+  const body = document.createElement("div");
+  body.className = "stream-body";
+  bubble.appendChild(body);
+
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  scrollToBottom();
+  return { row, tag, body };
 }
 
 function setBusy(busy) {
   sendBtn.disabled = busy;
-  typingEl.classList.toggle("hidden", !busy);
-  if (busy) scrollToBottom();
 }
 
 async function checkHealth() {
@@ -110,6 +122,76 @@ messageInput.addEventListener("keydown", (e) => {
   }
 });
 
+async function streamChat(form) {
+  const res = await fetch(`${SERVER_URL}/chat`, { method: "POST", body: form });
+  if (!res.ok || !res.body) throw new Error(`Server responded ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let live = null;
+  let text = "";
+  let sawError = false;
+
+  const flush = () => {
+    live.body.textContent = text;
+    scrollToBottom();
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const chunks = buffer.split("\n\n");
+    buffer = chunks.pop();
+
+    for (const chunk of chunks) {
+      const line = chunk.trim();
+      if (!line.startsWith("data:")) continue;
+
+      let evt;
+      try {
+        evt = JSON.parse(line.slice(5).trim());
+      } catch {
+        continue;
+      }
+
+      if (evt.type === "token") {
+        if (!live) {
+          typingEl.classList.add("hidden");
+          live = createLiveBubble();
+        }
+        text += evt.text;
+        flush();
+      } else if (evt.type === "error") {
+        sawError = true;
+        if (!live) {
+          typingEl.classList.add("hidden");
+          live = createLiveBubble();
+        }
+        live.row.classList.remove("bot");
+        live.row.classList.add("error");
+        text += evt.message;
+        flush();
+      } else if (evt.type === "done") {
+        if (!live) {
+          typingEl.classList.add("hidden");
+          live = createLiveBubble();
+          if (evt.text) {
+            text = evt.text;
+            flush();
+          }
+        }
+        if (evt.mode && !sawError) {
+          live.tag.textContent = evt.mode;
+          live.tag.classList.remove("hidden");
+        }
+      }
+    }
+  }
+}
+
 composerEl.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -135,15 +217,15 @@ composerEl.addEventListener("submit", async (e) => {
   jobDescriptionInput.value = "";
 
   setBusy(true);
+  typingEl.classList.remove("hidden");
+  scrollToBottom();
   try {
-    const res = await fetch(`${SERVER_URL}/chat`, { method: "POST", body: form });
-    if (!res.ok) throw new Error(`Server responded ${res.status}`);
-    const data = await res.json();
-    const role = data.mode === "error" ? "error" : "bot";
-    addMessage(data.reply, role, data.mode);
+    await streamChat(form);
   } catch (err) {
+    typingEl.classList.add("hidden");
     addMessage(`Could not reach the server: ${err.message}`, "error");
   } finally {
+    typingEl.classList.add("hidden");
     setBusy(false);
   }
 });
